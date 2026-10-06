@@ -3,7 +3,29 @@ let viewerOrder=[],works=[],selected=0,trailIndex=0,last={x:0,y:0,time:0},idleTi
 function title(w){if(w.project==='市场需求广告')return '社媒宣传视频 '+w.title.replace(/^\d+/,number=>number.padStart(2,'0'));return /^\d|^video|^类型/.test(w.title)?w.project:w.title}
 function openWork(i,scope){viewerOrder=scope||works.map((_,index)=>index);selected=(i+works.length)%works.length;const w=works[selected];document.querySelector('#viewer-title').textContent=title(w);document.querySelector('#viewer-category').textContent=w.category+' / '+(w.project==='市场需求广告'?'社媒宣传视频':w.project==='七彩虹广告短片'?'七彩虹电脑广告剧情短片':w.project);document.querySelector('#viewer-number').textContent=String(viewerOrder.indexOf(selected)+1).padStart(2,'0')+' / '+viewerOrder.length;const box=document.querySelector('#viewer-media');box.replaceChildren();const media=document.createElement(w.type==='video'?'video':'img');media.src=w.src;if(w.type==='video'){media.controls=true;media.autoplay=true;media.playsInline=true;media.poster=w.poster}else media.alt=title(w);box.append(media);if(!dialog.open)dialog.showModal();document.body.classList.add('modal-open');}
 document.querySelector('#close').onclick=()=>dialog.close();document.querySelector('#previous').onclick=()=>stepWork(-1);document.querySelector('#next').onclick=()=>stepWork(1);dialog.addEventListener('close',()=>{document.querySelector('#viewer-media').replaceChildren();document.body.classList.remove('modal-open')});document.addEventListener('keydown',e=>{if(dialog.open&&e.key==='ArrowRight')stepWork(1);if(dialog.open&&e.key==='ArrowLeft')stepWork(-1)});
-hero.addEventListener('pointermove',e=>{if(e.pointerType==='touch'||matchMedia('(prefers-reduced-motion: reduce)').matches||!trailWorks.length)return;const now=performance.now();if(Math.hypot(e.clientX-last.x,e.clientY-last.y)<65||now-last.time<95)return;last={x:e.clientX,y:e.clientY,time:now};hero.classList.add('moving');clearTimeout(idleTimer);idleTimer=setTimeout(()=>hero.classList.remove('moving'),1750);const rect=hero.getBoundingClientRect(),img=document.createElement('img');img.src=trailWorks[trailIndex++%trailWorks.length].poster;img.style.left=e.clientX-rect.left+'px';img.style.top=e.clientY-rect.top+'px';img.style.setProperty('--tilt',((trailIndex%5)-2)*4+'deg');trail.append(img);img.addEventListener('animationend',()=>img.remove());});
+function addHeroTrail(clientX,clientY){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches||!trailWorks.length)return;
+  const now=performance.now();
+  if(Math.hypot(clientX-last.x,clientY-last.y)<65||now-last.time<95)return;
+  const rect=hero.getBoundingClientRect();
+  if(clientX<rect.left||clientX>rect.right||clientY<rect.top||clientY>rect.bottom)return;
+  last={x:clientX,y:clientY,time:now};hero.classList.add('moving');
+  clearTimeout(idleTimer);idleTimer=setTimeout(()=>hero.classList.remove('moving'),1750);
+  const img=document.createElement('img');img.src=trailWorks[trailIndex++%trailWorks.length].poster;
+  img.style.left=clientX-rect.left+'px';img.style.top=clientY-rect.top+'px';
+  img.style.setProperty('--tilt',((trailIndex%5)-2)*4+'deg');trail.append(img);
+  img.addEventListener('animationend',()=>img.remove());
+}
+hero.addEventListener('pointermove',e=>{if(e.pointerType!=='touch')addHeroTrail(e.clientX,e.clientY)});
+// Passive touch events keep native vertical scrolling while rendering the trail.
+hero.addEventListener('touchstart',e=>{
+  if(e.touches.length!==1)return;
+  const touch=e.touches[0];last={x:touch.clientX,y:touch.clientY,time:performance.now()-95};
+},{passive:true});
+hero.addEventListener('touchmove',e=>{
+  if(e.touches.length!==1)return;
+  const touch=e.touches[0];addHeroTrail(touch.clientX,touch.clientY);
+},{passive:true});
 fetch('works.json').then(r=>r.json()).then(data=>{const order=['work-21','work-13','work-16','work-22','work-05','work-26','work-11','work-06','work-23','work-08','work-12','work-20','work-02','work-24','work-14','work-09','work-25','work-07','work-00','work-10','work-01','work-03','work-04','work-15','work-17','work-18','work-19'];works=order.map(id=>data.find(w=>w.id===id)).filter(Boolean);renderMotion();renderMv();renderAds();renderStory();renderSeo();}).catch(()=>{const error=document.createElement('p');error.textContent='作品加载失败，请刷新页面';document.querySelector('#works').append(error);});
 
 
